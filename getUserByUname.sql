@@ -1,0 +1,9 @@
+DELIMITER //
+DROP PROCEDURE IF EXISTS getUserByname //
+
+CREATE PROCEDURE getUserByname(IN Uname VARCHAR(30))
+BEGIN
+  SELECT * FROM users
+    WHERE username = Uname;
+END//
+DELIMITER ;
