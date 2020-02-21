@@ -1,0 +1,63 @@
+#%RAML 1.0
+title: ImageStoreRepo
+version: 0.1
+baseUri: http://info3103.cs.unb.ca/
+types:
+  TestType:
+    type: object
+    properties:
+      id: number
+      optional?: string
+      expanded:
+        type: object
+        properties:
+          count: number
+/helloWorld:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            example: |
+              {
+                "message" : "Hello World"
+              }
+/:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            example: |
+              {
+                "body" : "Welcome to the Image Store Repo. Go to /dev for usage instructions"
+              }
+
+/dev:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            example: |
+            {
+              "body" : "Enter message" #TODO FInsih this
+            }
+/login:
+  post:
+    queryParameters:
+      username: string
+      password: string
+
+
+  delete:
+    responses:
+      204:
+/users:
+  get:
+    queryParameters:
+      userId:
+
+  /{userId}:
+    /images:
+      /{imageId}:
