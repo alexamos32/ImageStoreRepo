@@ -41,7 +41,7 @@ class Root(Resource):
     def get(self):
         return 'Image Storage Repo'
 
-api.add_resource(Root,'/')
+api.add_resource(Root,'/') 
 
 
 class Users(Resource):
@@ -57,6 +57,8 @@ class Users(Resource):
         
         #TODO: Finish posting users
         return
+    
+    
 
     
 api.add_resource(Users, '/users')

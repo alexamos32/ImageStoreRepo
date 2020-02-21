@@ -3,16 +3,25 @@ title: ImageStoreRepo
 version: 0.1
 baseUri: http://info3103.cs.unb.ca/
 types:
-  TestType:
-    type: object
-    properties:
-      id: number
-      optional?: string
-      expanded:
-        type: object
-        properties:
-          count: number
-/helloWorld:
+  userPicture:
+    type: file
+    fileTypes: ['image/jpeg']
+  user: 
+    type : object
+    properties: 
+      name: 
+        type: string
+        required: true
+      username:
+        type: string
+        required: true
+      password:
+        type: string
+        required: true
+
+
+
+/ :  
   get:
     responses:
       200:
@@ -20,44 +29,427 @@ types:
           application/json:
             example: |
               {
-                "message" : "Hello World"
-              }
-/:
-  get:
-    responses:
-      200:
-        body:
-          application/json:
-            example: |
-              {
-                "body" : "Welcome to the Image Store Repo. Go to /dev for usage instructions"
+                "message" : "Welcome to the Image Store Repo. Go to /login"
               }
 
-/dev:
-  get:
+
+/login:
+  post:
+    description: Login to create new user session
+    body: 
+      application/json:
+        example: |
+        {
+          "username" : "jsmith32",
+          "password" : "password1234"
+        }
+    responses: 
+      201:
+        body: 
+          application/json:
+            example: |
+            {
+              "message" : "Login Successful",
+              "session_token" : "fj3wb4oc84mf"
+            }
+      400:
+        body: 
+          application/json:
+            example: |
+            {
+              "message" : "Bad Request: Check JSON Format"
+            }
+      500:
+        body: 
+          application/json:
+            example: |
+            {
+              "message" : "Internal Server Error": Login Unsuccessful"
+            }
+
+  get:'
+    description: Check if logged in
+    body:
+      application/json:
+        example: |
+        {
+          "username" : "jsmith32"
+        }
     responses:
       200:
         body:
           application/json:
             example: |
             {
-              "body" : "Enter message" #TODO FInsih this
+              "message" : "Session Found",
+              "session_token: "jfdkjsaeeow8432"
+              
             }
-/login:
-  post:
-    queryParameters:
-      username: string
-      password: string
-
-
+      400:
+        body: 
+          application/json:
+            example: |
+            {
+              "message" : "Bad Request: Check JSON Format"
+            }
+      404:
+        body: 
+          application/json:
+            example: |
+            {
+              "message" : "No Session Found: Must Login"
+            }
   delete:
+    description: Delete a valid session (Logout)
+    queryParameters:  
+      session_token:
+              description: Session token provided by the authenticated session
+              type: string
+              required: true
     responses:
       204:
+      404:
+        body: 
+          application/json:
+            example: |
+            {
+              "message" : "No Session Found"
+            }
 /users:
   get:
+    description: Return a specifed user once logged in
     queryParameters:
       userId:
+        type: string
+        required: true
+      session_token:
+              description: Session token provided by the authenticated session
+              type: string
+              required: true
+    responses: 
+      200:
+        body: 
+          application/json:
+            example: |
+            {
+              "name" : "John Smith",
+              "images" : "/users/1/images"
+            }
+      404:
+        body: 
+          application/json:
+            example: |
+            {
+              "message" : "User Not Found"
+            }
+      400:
+        body: 
+          application/json:
+            example: |
+            {
+              "message" : "Bad Request: Session Not Validated. Must Login"
+            }
+  post:
+    description: Create a new user
+    queryParameters: 
+      session_token:
+              description: Session token provided by the authenticated session
+              type: string
+              required: true
+      body:
+        application/json:
+          type: user
+          example: |
+          {
+            "name" : "John Smith",
+            "username" : "jsmith32",
+            "password" : "password1234"
+          }
+    responses: 
+      201:
+        body: 
+          application/json:
+            example: |
+            {
+              "user" : "/users/1"
+            }  
+      400:
+        body: 
+          application/json:
+            example: |
+            {
+              "message" : "Bad Request: Check JSON Format"
+            }
+      500:
+        body: 
+          application/json:
+            example: |
+            {
+              "message" : "Internal Server Error: User Creation Unsuccessful"
+            }
 
   /{userId}:
+    get:
+      description: Return Info about a user
+      queryParameters: 
+        session_token:
+              description: Session token provided by the authenticated session
+              type: string
+      responses:
+        200:
+          body:   
+            application/json:
+              example: |
+              {
+                "name" : "John Smith",
+                "username" : "jsmith32"
+              }
+        404:
+          body: 
+            application/json:
+              example: |
+              {
+                "message" : "User Not Found"
+              }
+    put:
+      description: Update User Info (name, username, password), can update one or multiple
+      queryParameters: 
+        session_token:
+              description: Session token provided by the authenticated session
+              type: string
+      body: 
+        application/json:
+          example: |
+          {
+            "password" : "MyNewPassword55"  
+          }
+      responses: 
+        200:
+          body: 
+            application/json:
+              example: |
+              {
+                "message" : "Update Successful"
+              }
+        404:
+          body: 
+            application/json:
+              example: |
+              {
+                "message" : "User Not Found"
+              }
+        400:
+            body: 
+              application/json:
+                example: |
+                {
+                  "message" : "Bad Request: Check JSON Structure"
+                }
+        500:
+          body: 
+            application/json:
+              example: |
+              {
+                "message" : "Internal Server Error: Update Unsuccessful"
+              }
+    delete:
+      description: Delete a User
+      queryParameters: 
+        session_token:
+              description: Session token provided by the authenticated session
+              type: string
+      responses: 
+        204:
+        404:
+          body: 
+            application/json:
+              example: |
+              {
+                "message" : "User Not Found"
+              }
+        500:
+          body: 
+            application/json:
+              example: |
+              {
+                "message" : "Internal Server Error: Cannot Delete User"
+              }
+
+
     /images:
+      get:
+        description: Retrieve list of images, or a specific image with provided id
+        queryParameters:
+          session_token:
+            description: Session token provided by the authenticated session
+            type: string
+            required: true 
+          imageId: 
+            type: number
+            required: false
+          responses:
+            200:
+              body:
+                application/json:
+                  example: |
+                  {
+                    "images" : [
+                      { "path" : "/users/1/images/123/",
+                        "description" : "Day at the beach"
+                      },
+                      { "path" : "/users/1/images/23/",
+                        "description" : "My favourite Motorcycle"
+                      }
+                    ]
+                  }
+            404:
+              body:
+                application/json:
+                  example: |
+                  {
+                    "message" : "Image not found"
+                  }
+      post:
+        description: Create a new image
+        queryParameters: 
+          session_token:
+            description: Session token provided by the authenticated session
+            type: string
+            required: true
+        body: 
+          multipart/form-data:
+            properties: 
+              file:
+                description: The image to be uploaded
+                required: true
+                type: file
+                example: !include beach.jpg
+              imageDescription:
+                description: An optional description for the image
+                required: false
+                type: string
+                example: Fun day at the beach
+        
+        responses: 
+          201:
+            body: 
+              application/json:
+                example: |
+                {
+                  "path" : "/users/1/images/456"
+                }
+          400:
+            body: 
+              application/json:
+                example: |
+                {
+                  "message" : "Bad Request: Check Post Structure"
+                }
+          500:
+            body: 
+              application/json:
+                example: |
+                {
+                  "message" : "Internal Server Error: Image Creation Unsuccessful"
+                }
+
+          
+          
+
       /{imageId}:
+        get:
+          description: Return an image file
+          queryParameters: 
+            session_token:
+              description: Session token provided by the authenticated session
+              type: string
+              required: true
+          body:
+            200:
+              body:
+                image/jpeg:
+                  type: userPicture
+                application/json:
+                  example: |
+                  {
+                    "description" : "Fun day at the beach"
+                  }
+            404:
+              body:
+                application/json:
+                  example: |
+                  {
+                    "message" : "Image Not Found"
+                  }
+            
+
+        put:
+          description: Update image description
+          queryParameters: 
+            session_token:
+              description: Session token provided by the authenticated session
+              type: string
+              required: true
+          body:
+            application/json:
+                          example: |
+                          {
+                            "imageDescription": "Good day with friends"
+                          }
+          responses: 
+            200:
+              body: 
+                application/json:
+                  example: |
+                  {
+                    "message": "Update Successful"
+                  }
+            400:
+              body: 
+                application/json:
+                  example: |
+                  {
+                    "message": "Bad Request: Check Request Structure"
+                  }
+            404:
+              body: 
+                  application/json:
+                    example: |
+                    {
+                      "message": "Image Not Found"
+                    }
+            500:
+              body: 
+                application/json:
+                  example: |
+                  {
+                    "message": "Internal Server Error: Update Unsuccessful"
+                  }
+
+        delete:
+          description: Delete an image
+          queryParameters: 
+            session_token:
+              description: Session token provided by the authenticated session
+              type: string
+              required: true
+          responses:
+            204:
+              
+            404:
+              body: 
+                  application/json:
+                    example: |
+                    {
+                      "message": "Image not found or already deleted"
+                    }
+            500:
+              body: 
+                application/json:
+                  example: |
+                  {
+                    "message" : "Internal Server Error: Cannot Delete Image"
+                  }
+            
+                    
+
