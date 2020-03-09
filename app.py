@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from flask import Flask, jsonify, abort, request, make_response
-from flask_restful import Resource, Api
+from flask_restful import Resource, Api, reqparse
+from flask_session import Session
 import pymysql.cursors
 import json
 
@@ -26,9 +27,6 @@ def not_found(error):
 def not_found(error):
 	return make_response(jsonify( { "status": "Resource not found" } ), 404)
 
-@app.errorhandler(500) 
-def server_error(error):
-    return make_response(jsonify( {"status": "Internal error"}), 500)
 ####################################################################################
 
 
@@ -39,9 +37,15 @@ def server_error(error):
 #TODO: Create and return index.html
 class Root(Resource):
     def get(self):
-        return 'Image Storage Repo'
+        return make_response( jsonify({ "message": "Welcome to the Image Store Repo. Go to /signin POST to sign in."}), 200)
 
 api.add_resource(Root,'/') 
+
+
+class Signin(Resource):
+    def post(self):
+        return
+        #TODO: FINISH SIGNING
 
 
 class Users(Resource):
@@ -51,17 +55,39 @@ class Users(Resource):
         # Sample command line usage:
         #
         # curl -i -X POST -H "Content-Type: application/json"
-        #    -d '{"Name": "Rick\'s School of Web", "Province": "NB", "Language":
-        #		  "EN", "Level": "simple"}'
+        #    -d '{"username": "johnsmith1"}'
         #         http://info3103.cs.unb.ca:xxxxx/schools
         
-        #TODO: Finish posting users
-        return
-    
-    
+        if not request.json or not 'username' in request.json:
+            abort(400)
 
-    
+        username = request.json['username'] 
+
+        try:
+            dbConnection = pymysql.connect(settings.DB_HOST,
+                settings.DB_USER,
+                settings.DB_PASSWD,
+                settings.DB_DATABASE,
+                charset='utf8mb4',
+                cursorclass= pymysql.cursors.DictCursor)
+            sql = 'insertUser'
+            cursor = dbConnection.cursor()
+            sqlArgs = (username)
+            cursor.callproc(sql,sqlArgs)
+            row = cursor.fetchone()
+            dbConnection.commit()
+        except:
+            abort(500) #Server error
+        finally:
+            cursor.close()
+            dbConnection.close()
+        #Construct URI to return to user for successful creation
+        uri = 'http://' + settings.APP_HOST + ':' + str(settings.APP_PORT)
+        uri = uri + str(request.url_rule) + '/' + str(row['LAST_INSERT_ID()'])
+        return make_response(jsonify( { "usr" : uri } ), 201) 
+
 api.add_resource(Users, '/users')
+
 
 
 class User(Resource):
@@ -95,4 +121,49 @@ class User(Resource):
     def update(self, userId):
         return
 
-apt.add_resource(User, '/users/<int:userId>')
+api.add_resource(User, '/users/<int:userId>')
+
+class Images(Resource):
+    def get(self, userId):
+        #Retrieving parameters
+        url = request.url
+        imageId = None
+        if "imageId" in url:
+            imageId = request.args.get("imageId")
+        try:
+            dbConnection = pymysql.connect(
+				settings.DB_HOST,
+				settings.DB_USER,
+				settings.DB_PASSWD,
+				settings.DB_DATABASE,
+				charset='utf8mb4',
+				cursorclass= pymysql.cursors.DictCursor)
+            if imageId is None:
+                #Args: owner
+                sql = 'getImages'
+                sqlArgs = (userId)
+            else:
+                #Args: owner, imageId
+                sql = 'getImageById'
+                sqlArgs = (userId, imageId)
+
+            cursor = dbConnection.cursor()
+            cursor.callproc(sql,sqlArgs)
+            rows = cursor.fetchall()
+            for row in rows:
+                pass
+        except:
+            abort(500)
+        return 'HEy'
+    
+    def post(self):
+        if not request.json:
+            abort(400)#bad request
+        
+        #Parse Json
+        parser = reqparse.RequestParser()
+        #try:
+        return "Hey"
+            
+
+api.add_resource(Images, '/users/<int:userId>/images')
