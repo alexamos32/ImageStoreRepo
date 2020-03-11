@@ -1,9 +1,0 @@
-DELIMITER //
-DROP PROCEDURE IF EXISTS getImagesByUser //
-
-CREATE PROCEDURE getImagesByUser(IN userId INT)
-BEGIN
-  SELECT * FROM images
-    WHERE owner = userId;
-END//
-DELIMITER ;
