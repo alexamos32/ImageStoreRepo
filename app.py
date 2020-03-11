@@ -89,7 +89,6 @@ class Users(Resource):
 api.add_resource(Users, '/users')
 
 
-
 class User(Resource):
     #GET: get info about user
     #UPDATE: Update User info
