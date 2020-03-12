@@ -130,40 +130,81 @@ class SignIn(Resource):
 class Users(Resource):
     #ONLY POST
     #For creating new users, but do not want to Allow GET on all users
-    def post(self):
-        # Sample command line usage:
-        #
-        # curl -i -X POST -H "Content-Type: application/json"
-        #    -d '{"username": "johnsmith1"}'
-        #         http://info3103.cs.unb.ca:xxxxx/schools
-        
-        if not request.json or not 'username' in request.json:
-            abort(400)
+	    def post(self):
+		# Sample command line usage:
+		#
+		# curl -i -X POST -H "Content-Type: application/json"
+		#    -d '{"username": "johnsmith1"}'
+		#         http://info3103.cs.unb.ca:xxxxx/schools
+		
+		if not request.json or not 'username' in request.json:
+		    abort(400)
 
-        username = request.json['username'] 
+		username = request.json['username'] 
+		directory = "./Users/" + username
+		try:
+		    dbConnection = pymysql.connect(settings.DB_HOST,
+		        settings.DB_USER,
+		        settings.DB_PASSWD,
+		        settings.DB_DATABASE,
+		        charset='utf8mb4',
+		        cursorclass= pymysql.cursors.DictCursor)
+		    sql = 'insertUser'
+		    cursor = dbConnection.cursor()
+		    sqlArgs = (username)
+		    cursor.callproc(sql,sqlArgs)
+		    row = cursor.fetchone()
+		    dbConnection.commit()
+		except:
+		    abort(500) #Server error
+		finally:
+		    cursor.close()
+		    dbConnection.close()
 
-        try:
-            dbConnection = pymysql.connect(settings.DB_HOST,
-                settings.DB_USER,
-                settings.DB_PASSWD,
-                settings.DB_DATABASE,
-                charset='utf8mb4',
-                cursorclass= pymysql.cursors.DictCursor)
-            sql = 'insertUser'
-            cursor = dbConnection.cursor()
-            sqlArgs = (username)
-            cursor.callproc(sql,sqlArgs)
-            row = cursor.fetchone()
-            dbConnection.commit()
-        except:
-            abort(500) #Server error
-        finally:
-            cursor.close()
-            dbConnection.close()
-        #Construct URI to return to user for successful creation
-        uri = 'http://' + settings.APP_HOST + ':' + str(settings.APP_PORT)
-        uri = uri + str(request.url_rule) + '/' + str(row['LAST_INSERT_ID()'])
-        return make_response(jsonify( { "usr" : uri } ), 201) 
+		if not os.path.exists(directory):
+			os.makedirs(directory)
+
+
+
+		#Construct URI to return to user for successful creation
+		uri = 'http://' + settings.APP_HOST + ':' + str(settings.APP_PORT)
+		uri = uri + str(request.url_rule) + '/' + str(row['LAST_INSERT_ID()'])
+		return make_response(jsonify( { "usr" : uri } ), 201) 
+
+
+	def delete(self):
+		if not request.json or not 'username' in request.json:
+		    abort(400)
+
+		username = request.json['username'] 
+		directory = "./Users/" + username
+
+		try:
+		    dbConnection = pymysql.connect(settings.DB_HOST,
+		        settings.DB_USER,
+		        settings.DB_PASSWD,
+		        settings.DB_DATABASE,
+		        charset='utf8mb4',
+		        cursorclass= pymysql.cursors.DictCursor)
+		    sql = 'deleteUser'
+		    cursor = dbConnection.cursor()
+		    sqlArgs = (username)
+		    cursor.callproc(sql,sqlArgs)
+		    row = cursor.fetchone()
+		    dbConnection.commit()
+		except:
+		    abort(500) #Server error
+		finally:
+		    cursor.close()
+		    dbConnection.close()
+		
+		if not os.path.exists(directory):
+			os.rmdirs(directory)
+
+		#Construct URI to return to user for successful deletion
+		uri = 'http://' + settings.APP_HOST + ':' + str(settings.APP_PORT)
+		uri = uri + str(request.url_rule) + '/' + str(row['LAST_INSERT_ID()'])
+		return make_response(jsonify( { "usr" : uri } ), 201) 
 
 
 
