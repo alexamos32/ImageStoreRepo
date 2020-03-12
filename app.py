@@ -250,7 +250,7 @@ api= Api(app)
 api.add_resource(Users, '/users')
 api.add_resource(Images, '/users/<int:userId>/images')
 api.add_resource(User, '/users/<int:userId>')
-api.add_resource(SignIn, '/SignIn')
+api.add_resource(SignIn, '/signin')
 api.add_resource(Root,'/') 
 
 if __name__ == "__main__":
