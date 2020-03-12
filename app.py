@@ -89,7 +89,7 @@ class SignIn(Resource):
 				session['username'] = request_params['username']
 				response = {'status': 'success' }
 				responseCode = 201
-			except (LDAPException, error_message):
+			except (LDAPException):
 				response = {'status': 'Access denied'}
 				responseCode = 403
 			finally:
