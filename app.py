@@ -20,11 +20,6 @@ app = Flask(__name__)
 api= Api(app)
 
 # Setting up SESSION info
-app.secret_key = settings.SECRET_KEY
-app.config['SESSION_TYPE'] = ' wc wcstem'
-app.config['SESSION_COOKIE_NAME'] = 'peanutButter'
-app.config['SESSION_COOKIE_DOMAIN'] = settings.APP_HOST
-Session(app)
 
 ####################################################################################
 # Error handlers
@@ -52,76 +47,6 @@ class Root(Resource):
 api.add_resource(Root,'/')
 
 
-class Signin(Resource):
-        # Login, start a session and set/return a session cookie
-        #
-        # Example curl command:
-        # curl -i -H "Content-Type: application/json" -X POST -d '{"username": "Casper", "password": "cr*ap"}'
-        #-c cookie-jar http://info3103.cs.unb.ca:61340/signin
-        #
-        def post(self):
-                if not request.json:
-                        abort(400) # bad request
-                # Parse the json
-                parser = reqparse.RequestParser()
-                try:
-                        # Check for required attributes in json document, create a dictionary
-                        parser.add_argument('username', type=str, required=True)
-                        parser.add_argument('password', type=str, required=True)
-                        request_params = parser.parse_args()
-                except:
-                        abort(400) # bad request
-
-                # Already logged in
-                if request_params['username'] in session:
-                        response = {'status': 'success'}
-                        responseCode = 200
-                else:
-                        try:
-                                ldapServer = Server(host=settings.LDAP_HOST)
-                                ldapConnection = Connection(ldapServer,
-                                        raise_exceptions=True,
-                                        user='uid='+request_params['username']+', ou=People,ou=fcs,o=unb',
-                                        password=request_params['password'])
-                                ldapConnection.open()
-                                ldapConnection.start_tls()
-                                ldapConnection.bind()
-                                # At this point we have sucessfully authenticated.
-                                session['username'] = request_params['username']
-                                response = {'status': 'success' }
-                                responseCode = 201
-                        except (LDAPException):
-                                response = {'status': 'Access denied'}
-                                responseCode = 403
-                        finally:
-                                ldapConnection.unbind()
-                return make_response(jsonify(response), responseCode)
-
-        #GET: Check for a login
-        #Example curl command:
-        # curl -i -H "Content-Type: application/json" -X GET -b cookie-jar
-        #http://info3103.cs.unb.ca:61340/signin
-
-
-        def get(self):
-                if 'username' in session:
-                        response = {'status': 'success'}
-                        responseCode = 200
-                else:
-                        response = {'status': 'fail'}
-                        responseCode = 403
-
-                return make_response(jsonify(response), responseCode)
-
-        # DELETE: Logout: remove session
-        #
-        # Example curl command:
-        # curl -i -H "Content-Type: application/json" -X DELETE -b cookie-jar
-        #       http://info3103.cs.unb.ca:61340/signin
-        #
-        #       Here's your chance to shine!
-        #
-api.add_resource(Signin,'/signin')
 class Users(Resource):
         #'ONLY POST
         #For creating new users, but do not want to Allow GET on all users
