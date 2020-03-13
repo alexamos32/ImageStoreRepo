@@ -7,6 +7,7 @@ import werkzeug, os
 from ldap3 import Server, Connection, ALL
 from ldap3.core.exceptions import *
 import pymysql.cursors
+import ssl
 
 import cgitb
 import cgi
@@ -51,87 +52,142 @@ class Root(Resource):
 
 
 class SignIn(Resource):
-	#
-	# Login, start a session and set/return a session cookie
-	#
-	# Example curl command:
-	# curl -i -H "Content-Type: application/json" -X POST -d '{"username": "Casper", "password": "cr*ap"}'
-	#  	-c cookie-jar http://info3103.cs.unb.ca:61340/signin
-	#
-	def post(self):
-		if not request.json:
-			abort(400) # bad request
-		# Parse the json
-		parser = reqparse.RequestParser()
-		try:
-			# Check for required attributes in json document, create a dictionary
-			parser.add_argument('username', type=str, required=True)
-			parser.add_argument('password', type=str, required=True)
-			request_params = parser.parse_args()
-		except:
-			abort(400) # bad request
+        #
+        # Login, start a session and set/return a session cookie
+        #
+        # Example curl command:
+        # curl -i -H "Content-Type: application/json" -X POST -d '{"username": "Casper", "password": "cr*ap"}'
+        #  	-c cookie-jar http://info3103.cs.unb.ca:61340/signin
+        #
+        def post(self):
+                userId = None
+                if not request.json:
+                        abort(400) # bad request
+                # Parse the json
+                parser = reqparse.RequestParser()
+                try:
+                        # Check for required attributes in json document, create a dictionary
+                        parser.add_argument('username', type=str, required=True)
+                        parser.add_argument('password', type=str, required=True)
+                        request_params = parser.parse_args()
+                except:
+                        #Bad request if missing username or password
+                        abort(400) # bad request
 
-		# Already logged in
-		if request_params['username'] in session:
-			response = {'status': 'success'}
-			responseCode = 200
-		else:
-			try:
-				ldapServer = Server(host=settings.LDAP_HOST)
-				ldapConnection = Connection(ldapServer,
-					raise_exceptions=True,
-					user='uid='+request_params['username']+', ou=People,ou=fcs,o=unb',
-					password = request_params['password'])
-				ldapConnection.open()
-				ldapConnection.start_tls()
-				ldapConnection.bind()
-				# At this point we have sucessfully authenticated.
-				session['username'] = request_params['username']
-				response = {'status': 'success' }
-				responseCode = 201
-			except (LDAPException):
-				response = {'status': 'Access denied'}
-				responseCode = 403
-			finally:
-				ldapConnection.unbind()
+                # Already logged in
+                if request_params['username'] in session:
+                        response = {'status': 'success'}
+                        responseCode = 200
+                else:
+                        try:
+                                #Attempting Login through LDAP
+                                ldapServer = Server(host=settings.LDAP_HOST)
+                                ldapConnection = Connection(ldapServer,
+                                        raise_exceptions=True,
+                                        user='uid='+request_params['username']+', ou=People,ou=fcs,o=unb',
+                                        password = request_params['password'])
+                                ldapConnection.open()
+                                ldapConnection.start_tls()
+                                ldapConnection.bind()
+                                # At this point we have sucessfully authenticated.
+                                #Add username to session object
+                                session['username'] = request_params['username']
+                                response = {'status': 'success' }
+                                responseCode = 201
+                        except (LDAPException):
+                                response = {'status': 'Access denied'}
+                                responseCode = 403
+                        finally:
+                                ldapConnection.unbind()
 
-		return make_response(jsonify(response), responseCode)
+                #If Logged in
+                if responseCode <=201:
+                        try:
+                                #Check user exists in DB
+                                dbConnection = pymysql.connect(
+                                        settings.DB_HOST,
+                                        settings.DB_USER,
+                                        settings.DB_PASSWD,
+                                        settings.DB_DATABASE,
+                                        charset='utf8mb4',
+                                        cursorclass= pymysql.cursors.DictCursor)
+                                sql = 'getUserByUsername'
+                                sqlArgs = (request_params['username'],)
+                                cursor = dbConnection.cursor()
+                                cursor.callproc(sql,sqlArgs)
+                                row = cursor.fetchone()
 
-	# GET: Check for a login
-	#
-	# Example curl command:
-	# curl -i -H "Content-Type: application/json" -X GET -b cookie-jar
-	#	http://info3103.cs.unb.ca:61340/signin
-	def get(self):
-		if 'username' in session:
-			response = {'status': 'success'}
-			responseCode = 200
-		else:
-			response = {'status': 'fail'}
-			responseCode = 403
+                        except :
+                                abort(500)
 
-		return make_response(jsonify(response), responseCode)
+                        if row is None:
+                                #User Doesn't exist must insert user
+                                try:
+                                        sql = 'insertUser'
+                                        cursor.callproc(sql,sqlArgs)
+                                        row = cursor.fetchone()
+                                        dbConnection.commit()
 
-	def delete(self):
-		###############
-		#Log Out a User
-		###############
-		if 'username' in session:
-			session.clear()
-			response = {'status': 'successfully logged out'}
-			responseCode = 200
-		else:
-			response = {'status': 'could not log out'}
-			responseCode = 403
+                                except:
+                                        abort(500)
+                                finally:
+                                        cursor.close()
+                                        dbConnection.close()
+                                if "userId" in row:
+                                        userId = row["userId"]
+                                else:
+                                        abort(500)
+                                path = './users/'+ str(userId)
+                                pathImg = path + '/images'
+                                #Set up folders for user on server
+                                try:
+                                        os.mkdir(path)
+                                        os.mkdir(pathImg)
+                                except OSError:
+                                        abort(500)
+                        else:
+                                #user already exists, save userId for response
+                                userId = row["userId"]
+                response["userId"] = userId
+                response["message"] = 'Got to /users/<userId>/images (GET to view images, POST to upload images)'
 
-		return make_response(jsonify(response), responseCode)
+                return make_response(jsonify(response), responseCode)
+
+        # GET: Check for a login
+        #
+        # Example curl command:
+        # curl -i -H "Content-Type: application/json" -X GET -b cookie-jar
+        #http://info3103.cs.unb.ca:61340/signin
+        def get(self):
+                if 'username' in session:
+                        response = {'status': 'success'}
+                        responseCode = 200
+                else:
+                        response = {'status': 'fail'}
+                        responseCode = 403
+
+                return make_response(jsonify(response), responseCode)
+
+        def delete(self):
+                ###############
+                #Log Out a User
+                ###############
+                if 'username' in session:
+                        session.clear()
+                        response = {'status': 'successfully logged out'}
+                        responseCode = 200
+                else:
+                        response = {'status': 'could not log out'}
+                        responseCode = 403
+
+                return make_response(jsonify(response), responseCode)
 
 
 class Users(Resource):
         #'ONLY POST
         #For creating new users, but do not want to Allow GET on all users
         def post(self):
-                # Sample command line usage:
+        # Sample command line usage:
         #
         # curl -i -X POST -H "Content-Type: application/json"
         #    -d '{"username": "johnsmith1"}'
@@ -250,7 +306,6 @@ api.add_resource(Images, '/users/<int:userId>/images')
 api.add_resource(User, '/users/<int:userId>')
 api.add_resource(SignIn, '/signin')
 api.add_resource(Root,'/') 
-
 if __name__ == "__main__":
-	app.run(host=settings.APP_HOST, port=settings.APP_PORT, debug=settings.APP_DEBUG)
-
+        context = ('cert.pem', 'key.pem')
+        app.run(host=settings.APP_HOST, port=settings.APP_PORT, ssl_context=context, debug=settings.APP_DEBUG)
