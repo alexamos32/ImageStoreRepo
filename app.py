@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from flask import Flask, jsonify, abort, request, make_response, session
+from flask import Flask, jsonify, abort, request, make_response, session, send_from_directory
 from flask_restful import Resource, Api, reqparse
 from flask_session import Session
 import json
@@ -360,6 +360,44 @@ class Images(Resource):
                 response = {"status": "success", "url": path }
                 return make_response(jsonify(response),responsecode)
 
+class ImageId(Resource):
+        #GET an Image file of name <imageId>, sends the file with response
+        #Example curl statement:
+        #curl -i -X GET -k https://info3103.cs.unb.ca:51496/users/6/images/13 --output download.jpg
+        def get(self, userId, imageId):
+                try:
+                        #Search for image in DB
+                        dbConnection = pymysql.connect(
+                                settings.DB_HOST,
+                                settings.DB_USER,
+                                settings.DB_PASSWD,
+                                settings.DB_DATABASE,
+                                charset='utf8mb4',
+                                cursorclass= pymysql.cursors.DictCursor)
+                        sql = 'getImageById'
+                        sqlArgs = (userId, imageId)
+                        cursor = dbConnection.cursor()
+                        cursor.callproc(sql, sqlArgs)
+                        row = cursor.fetchone()
+                except:
+                        abort(500)
+                finally:
+                        cursor.close()
+                        dbConnection.close()
+
+                #Abort 404 if no image found
+                if row is None:
+                        abort(404)
+                #Grab filetype from DB row
+                filetype = row["filetype"]
+                imagename = str(imageId) +"." + filetype
+                directory = "users/"+str(userId)+"/images"
+                try:
+                        #Send file to user as attachment
+                        return make_response(send_from_directory(directory, filename=imagename, as_attachment=True),200)
+                except:
+                        #404 if file not found in specified directory
+                        abort(404)
 
 #Create EndPoints            
 api= Api(app)
@@ -367,6 +405,7 @@ api.add_resource(Users, '/users')
 api.add_resource(Images, '/users/<int:userId>/images')
 api.add_resource(User, '/users/<int:userId>')
 api.add_resource(SignIn, '/signin')
+api.add_resource(ImageId, '/users/<int:userId>/images/<int:imageId>')
 api.add_resource(Root,'/') 
 if __name__ == "__main__":
         context = ('cert.pem', 'key.pem')
