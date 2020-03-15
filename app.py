@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from flask import Flask, jsonify, abort, request, make_response, session, render_template
+from flask import Flask, jsonify, abort, request, make_response, session
 from flask_restful import Resource, Api, reqparse
 from flask_session import Session
 import json
@@ -8,15 +8,13 @@ from ldap3 import Server, Connection, ALL
 from ldap3.core.exceptions import *
 import pymysql.cursors
 import ssl
-
+from tools import allowed_file
 import cgitb
 import cgi
 import sys
 cgitb.enable()
 
 import settings
-UPLOAD_FOLDER ='/path/to/folder' #PLACEHOLDER
-ALLOWED_EXTENSIONS = set(['png','jpg','jpeg'])
 app = Flask(__name__)
 app.secret_key = settings.SECRET_KEY
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -260,10 +258,13 @@ class User(Resource):
 class Images(Resource):
         def get(self, userId):
                 #Retrieving parameters
-                url = request.url
                 imageId = None
-                if "imageId" in url:
-                        imageId = request.args.get("imageId")
+                parser = reqparse.RequestParser()
+                parser.add_argument('imageId', type=int)
+                request_params = parser.parse_args()
+                if "imageId" in request_params:
+                        imageId = request_params["imageId"]
+                #print('IMAGEID: ' + str(imageId))
                 try:
                         dbConnection = pymysql.connect(settings.DB_HOST,
                                 settings.DB_USER,
@@ -273,7 +274,7 @@ class Images(Resource):
                                 cursorclass= pymysql.cursors.DictCursor)
                         if imageId is None:
                                 sql = 'getImages'
-                                sqlArgs = (userId)
+                                sqlArgs = (userId,)
                         else:
                                 #Args: owner, imageId
                                 sql = 'getImageById'
@@ -282,21 +283,82 @@ class Images(Resource):
                         cursor = dbConnection.cursor()
                         cursor.callproc(sql,sqlArgs)
                         rows = cursor.fetchall()
-                        for row in rows:
-                                pass
+
                 except:
                         abort(500)
-                return 'HEy'
-    
-        def post(self):
-                if not request.json:
-                        abort(400)#bad request
-        
-                #Parse Json
+                finally:
+                        cursor.close()
+                        dbConnection.close()
+                response={'images': rows}
+                responsecode=200
+                return make_response(jsonify(response),responsecode)
+
+        ####POST AN IMAGE
+        def post(self, userId):
+                UPLOAD_FOLDER = 'users/'+str(userId)+'/images'
+                description = None
+                imageId=None
+
                 parser = reqparse.RequestParser()
+                #Adding creating argument for imagefile
+                parser.add_argument('file',type=werkzeug.datastructures.FileStorage, location='files')
+                parser.add_argument('description',type=str)
+                data = parser.parse_args()
+
+                #Error if no file included
+                if not request.files:
+                        abort(400)#bad request
+
+                #Grab file from arguments
+                photo = data['file']
+                #Split file name to get file type e.g. test.jpg
+                filetype = (photo.filename).split(".")[1].lower()
+                #return error if filetype is not permitted
+                if not allowed_file(photo.filename):
+                        return make_response(jsonify({"error": "only allowed types: jpg, jpeg, png, gif"}),403)
+                #print(imageType)
+                #print(photo)
+                #print(photo.filename)
+                #print(photo.content_type)
                 #try:
-                return "Hey"
-            
+                #
+
+                #If description is in request grab it for db
+                if 'description' in data:
+                        description = data['description']
+                try:
+                        #DB INSERT
+                        dbConnection = pymysql.connect(
+                                settings.DB_HOST,
+                                settings.DB_USER,
+                                settings.DB_PASSWD,
+                                settings.DB_DATABASE,
+                                charset='utf8mb4',
+                                cursorclass= pymysql.cursors.DictCursor)
+                        sql = 'insertImage'
+                        sqlArgs = (description, UPLOAD_FOLDER, userId, filetype)
+                        cursor = dbConnection.cursor()
+                        cursor.callproc(sql,sqlArgs)
+                        row = cursor.fetchone()
+                        dbConnection.commit()
+                except:
+                        abort(500)
+                finally:
+                       cursor.close()
+                       dbConnection.close()
+                #Insert will return row for image from db
+                if 'imageId' in row:
+                        imageId = row['imageId']
+                else:
+                        abort(500)
+                #Join image ID and Filetype to create filename, then save file
+                filename = str(imageId) +'.'+ filetype
+                photo.save(os.path.join(UPLOAD_FOLDER,filename))
+                #Create a path to image to return to user
+                path = UPLOAD_FOLDER +'/'+ str(imageId)
+                responsecode = 201
+                response = {"status": "success", "url": path }
+                return make_response(jsonify(response),responsecode)
 
 
 #Create EndPoints            

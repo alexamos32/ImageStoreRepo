@@ -1,5 +1,5 @@
 
-APP_HOST = 'info3103.cs.unb.ca'
+APP_HOST = 'localhost'
 APP_PORT = 51496# Change this to your port number
 APP_DEBUG =True
 DB_HOST = 'localhost'
