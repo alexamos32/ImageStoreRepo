@@ -3,12 +3,12 @@ from flask import Flask, jsonify, abort, request, make_response, session, send_f
 from flask_restful import Resource, Api, reqparse
 from flask_session import Session
 import json
-import werkzeug, os
+import werkzeug, os, shutil
 from ldap3 import Server, Connection, ALL
 from ldap3.core.exceptions import *
 import pymysql.cursors
 import ssl
-from tools import allowed_file
+from tools import allowed_file, authenticated, authorized
 import cgitb
 import cgi
 import sys
@@ -54,8 +54,9 @@ class SignIn(Resource):
         # Login, start a session and set/return a session cookie
         #
         # Example curl command:
-        # curl -i -H "Content-Type: application/json" -X POST -d '{"username": "Casper", "password": "cr*ap"}'
-        #  	-c cookie-jar http://info3103.cs.unb.ca:61340/signin
+        # curl -i -H "Content-Type: application/json" -X POST
+        # -d '{"username": "Casper", "password": "cr*ap"}'
+        # -c cookie-jar -k https://info3103.cs.unb.ca:51496/signin
         #
         def post(self):
                 userId = None
@@ -155,107 +156,94 @@ class SignIn(Resource):
         #
         # Example curl command:
         # curl -i -H "Content-Type: application/json" -X GET -b cookie-jar
-        #http://info3103.cs.unb.ca:61340/signin
+        # -k https://info3103.cs.unb.ca:51496/signin
         def get(self):
                 if 'username' in session:
                         response = {'status': 'success'}
                         responseCode = 200
                 else:
-                        response = {'status': 'fail'}
-                        responseCode = 403
-
-                return make_response(jsonify(response), responseCode)
-
-        def delete(self):
-                ###############
-                #Log Out a User
-                ###############
-                if 'username' in session:
-                        session.clear()
-                        response = {'status': 'successfully logged out'}
-                        responseCode = 200
-                else:
-                        response = {'status': 'could not log out'}
+                        response = {'status': 'fail', 'message': 'must sign in'}
                         responseCode = 403
 
                 return make_response(jsonify(response), responseCode)
 
 
-class Users(Resource):
-        #'ONLY POST
-        #For creating new users, but do not want to Allow GET on all users
-        def post(self):
-        # Sample command line usage:
+        # DELETE: Log Out a User
         #
-        # curl -i -X POST -H "Content-Type: application/json"
-        #    -d '{"username": "johnsmith1"}'
-        #         http://info3103.cs.unb.ca:xxxxx/schools
-        
-                if not request.json or not 'username' in request.json:
-                        abort(400)
+        # Example curl command:
+        # curl -i -X DELETE -b cookie-jar
+        # -k https://info3103.cs.unb.ca:51496/signin
+        @authenticated
+        def delete(self):
+                session.clear()
+                response = {'status': 'successfully logged out'}
+                responseCode = 204
 
-                username = request.json['username']
+                return make_response(jsonify(response), responseCode)
 
+
+
+class User(Resource):
+        # DELETE: For deleting a user and all associated images of said user
+        #
+        # Example curl command:
+        # curl -i -X DELETE -b cookie-jar
+        # -k https://info3103.cs.unb.ca:51496/users/<userId>
+        @authenticated
+        @authorized
+        def delete(self, userId):
+
+                path = './users/'+str(userId)
+                #return not found if path to user folder does not exist
+                if not os.path.exists(path):
+                       abort(404)
                 try:
+                        #Delete all user info from DB and associated images
                         dbConnection = pymysql.connect(settings.DB_HOST,
-                                settings.DB_USER,
-                                settings.DB_PASSWD,
-                                settings.DB_DATABASE,
-                                charset='utf8mb4',
-                                cursorclass= pymysql.cursors.DictCursor)
-                        sql = 'insertUser'
+                                                       settings.DB_USER,
+                                                       settings.DB_PASSWD,
+                                                       settings.DB_DATABASE,
+                                                       charset='utf8mb4',
+                                                       cursorclass= pymysql.cursors.DictCursor)
+                        sql = 'deleteUser'
                         cursor = dbConnection.cursor()
-                        sqlArgs = (username)
+                        sqlArgs = (userId,)
                         cursor.callproc(sql,sqlArgs)
                         row = cursor.fetchone()
                         dbConnection.commit()
+                #Universal catch, all errors will result in a 500
                 except:
                         abort(500) #Server error
                 finally:
                         cursor.close()
                         dbConnection.close()
-                #Construct URI to return to user for successful creation
-                uri = 'http://' + settings.APP_HOST + ':' + str(settings.APP_PORT)
-                uri = uri + str(request.url_rule) + '/' + str(row['LAST_INSERT_ID()'])
-                return make_response(jsonify( { "usr" : uri } ), 201)
 
-
-
-
-
-class User(Resource):
-        #GET: get info about user
-        #UPDATE: Update User info
-        def get(self, username):
                 try:
-                        dbConnection = pymysql.connect(settings.DB_HOST,
-                                settings.DB_USER,
-                                settings.DB_PASSWD,
-                                settings.DB_DATABASE,
-                                charset='utf8mb4',
-                                cursorclass= pymysql.cursors.DictCursor)
-                        sql = 'getUserByUname'
-                        cursor = dbConnection.cursor()
-                        sqlArgs = (username,)
-                        cursor.callproc(sql,sqlArgs)
-                        row = cursor.fetchone()
-                        if row is None:
-                                abort(404)
+                        #Delete folder containing user images
+                        shutil.rmtree(path)
                 except:
+                        #user folder not found
                         abort(500)
-                finally:
-                        cursor.close()
-                        dbConnection.close()
-                return make_response(jsonify({"user": row}), 200)
-        
-    
+                return make_response(jsonify( { "status" : "success" } ), 204)
 
-        def update(self, userId):
-                return
+
 
 
 
 class Images(Resource):
+        # GET: Returns list of all images for user, or 1 image with specified ID
+        #
+        # Example curl command:
+        # curl -i -H "Content-Type: application/json" -d '{"imageId": 1}
+        # -X GET -b cookie-jar
+        # -k https://info3103.cs.unb.ca:51496/users/<userId>/images
+        #
+        # OR
+        #
+        # curl -i -X GET -b cookie-jar
+        # -k https://info3103.cs.unb.ca:51496/users/<userId>/images
+        @authenticated
+        @authorized
         def get(self, userId):
                 #Retrieving parameters
                 imageId = None
@@ -264,7 +252,6 @@ class Images(Resource):
                 request_params = parser.parse_args()
                 if "imageId" in request_params:
                         imageId = request_params["imageId"]
-                #print('IMAGEID: ' + str(imageId))
                 try:
                         dbConnection = pymysql.connect(settings.DB_HOST,
                                 settings.DB_USER,
@@ -272,6 +259,7 @@ class Images(Resource):
                                 settings.DB_DATABASE,
                                 charset='utf8mb4',
                                 cursorclass= pymysql.cursors.DictCursor)
+                        #Procedure changes if imageId specified
                         if imageId is None:
                                 sql = 'getImages'
                                 sqlArgs = (userId,)
@@ -293,14 +281,23 @@ class Images(Resource):
                 responsecode=200
                 return make_response(jsonify(response),responsecode)
 
-        ####POST AN IMAGE
+        # POST: Upload a new image
+        # Allowed types (jpg, jpeg, gif, png)
+        # Example curl command:
+        # curl -i -X POST -H "Content-Type: multipart/form-data"
+        # -F "file=@test.jpg" -F "description=image description" -b cookie-jar
+        # -k https://info3103.cs.unb.ca:51496/users/<userId>/images
+        #
+        #NOTE: description is an optional parameter
+        @authenticated
+        @authorized
         def post(self, userId):
                 UPLOAD_FOLDER = 'users/'+str(userId)+'/images'
                 description = None
                 imageId=None
 
                 parser = reqparse.RequestParser()
-                #Adding creating argument for imagefile
+                #Adding arguments for imagefile and description
                 parser.add_argument('file',type=werkzeug.datastructures.FileStorage, location='files')
                 parser.add_argument('description',type=str)
                 data = parser.parse_args()
@@ -316,12 +313,6 @@ class Images(Resource):
                 #return error if filetype is not permitted
                 if not allowed_file(photo.filename):
                         return make_response(jsonify({"error": "only allowed types: jpg, jpeg, png, gif"}),403)
-                #print(imageType)
-                #print(photo)
-                #print(photo.filename)
-                #print(photo.content_type)
-                #try:
-                #
 
                 #If description is in request grab it for db
                 if 'description' in data:
@@ -353,7 +344,10 @@ class Images(Resource):
                         abort(500)
                 #Join image ID and Filetype to create filename, then save file
                 filename = str(imageId) +'.'+ filetype
-                photo.save(os.path.join(UPLOAD_FOLDER,filename))
+                try:
+                        photo.save(os.path.join(UPLOAD_FOLDER,filename))
+                except:
+                        abort(500)
                 #Create a path to image to return to user
                 path = UPLOAD_FOLDER +'/'+ str(imageId)
                 responsecode = 201
@@ -361,9 +355,20 @@ class Images(Resource):
                 return make_response(jsonify(response),responsecode)
 
 class ImageId(Resource):
-        #GET an Image file of name <imageId>, sends the file with response
-        #Example curl statement:
-        #curl -i -X GET -k https://info3103.cs.unb.ca:51496/users/6/images/13 --output download.jpg
+        # GET: Returns an image file back to user
+        #
+        # Example curl command:
+        # curl -X GET -b cookie-jar
+        # -k https://info3103.cs.unb.ca:51496/users/<userId>/images/<imageId>
+        # --output download.jpg
+        # NOTE: do not use -i curl tag for this command.
+        # This will cause headers to be saved in image file creating a corrupte file
+        # Also should perform GET on images endpoint first
+        # This will show list of images along with their file types,
+        # this way the output file can be saved with the proper file type
+        # i.e jpg, png ...
+        @authenticated
+        @authorized
         def get(self, userId, imageId):
                 try:
                         #Search for image in DB
@@ -399,13 +404,55 @@ class ImageId(Resource):
                         #404 if file not found in specified directory
                         abort(404)
 
+
+        # DELETE: Delete an image
+        #
+        # Example curl command:
+        # curl -i -X DELETE -b cookie-jar
+        # -k https://info3103.cs.unb.ca:51496/users/<userId>/images/<imageId>
+        @authenticated
+        @authorized
+        def delete(self, userId, imageId):
+                try:
+                        #Delete image from DB
+                        #Procedure will also return deleted row so that filetype can be obtained
+                        dbConnection = pymysql.connect(
+                                settings.DB_HOST,
+                                settings.DB_USER,
+                                settings.DB_PASSWD,
+                                settings.DB_DATABASE,
+                                charset='utf8mb4',
+                                cursorclass= pymysql.cursors.DictCursor)
+                        sql = 'deleteImage'
+                        sqlArgs = (imageId,)
+                        cursor = dbConnection.cursor()
+                        cursor.callproc(sql, sqlArgs)
+                        row = cursor.fetchone()
+                        dbConnection.commit()
+                except:
+                        abort(500)
+                finally:
+                        cursor.close()
+                        dbConnection.close()
+                if row is None:
+                        abort(404)
+                #construct filename and path for file delete
+                filename = str(imageId)+'.'+row['filetype']
+                path = 'users/'+str(userId)+'/images/'+filename
+                try:
+                        os.remove(path)
+                except:
+                        #abort 404 if image not found
+                        abort(404)
+                response = {'status': 'success'}
+                responsecode = 204
+                return make_response(jsonify(response),responsecode)
 #Create EndPoints            
 api= Api(app)
-api.add_resource(Users, '/users')
 api.add_resource(Images, '/users/<int:userId>/images')
-api.add_resource(User, '/users/<int:userId>')
 api.add_resource(SignIn, '/signin')
 api.add_resource(ImageId, '/users/<int:userId>/images/<int:imageId>')
+api.add_resource(User, '/users/<int:userId>')
 api.add_resource(Root,'/') 
 if __name__ == "__main__":
         context = ('cert.pem', 'key.pem')
