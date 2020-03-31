@@ -15,7 +15,7 @@ import sys
 cgitb.enable()
 
 import settings
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 app.secret_key = settings.SECRET_KEY
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_NAME'] = 'peanutButter'
@@ -45,7 +45,8 @@ def not_found(error):
 #TODO: Create and return index.html
 class Root(Resource):
         def get(self):
-                return make_response( jsonify({ "message": "Welcome to the Image Store Repo. Go to /signin POST to sign in."}), 200)
+                #return make_response( jsonify({ "message": "Welcome to the Image Store Repo. Go to /signin POST to sign in."}), 200)
+                return app.send_static_file('index.html')
 
 
 
