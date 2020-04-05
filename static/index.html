@@ -13,30 +13,59 @@
         <link rel="icon" href="data:,">
     </head>
     <body>
-        <div id="container">
-            <div id="app">
+        <div class="container-fluid" id="app">
 
-                <div v-if="!authenticated" class="form-group text-center" id="signin">
-                    <div class="jumbotron text-center" id="header">
-                        <h1>Stack</h1>
-                        <h3>Stack your photos in one place</h3>
-                    </div>
+            <div v-if="!authenticated" class="form-group text-center" id="container-signin">
+                <div class="jumbotron text-center" id="container-header">
+                    <h1>Stack</h1>
+                    <h3>Stack your photos in one place</h3>
+                </div>
+                <div id="form-login">
                     <input class="col-4 mx-auto form-control" type="text" name="username" v-model="input.username" placeholder="Username" />
                     <input class="col-4 mx-auto form-control" type="password" name="password" v-model="input.password" placeholder="Password" />
                     <button class="col-4 btn btn-outline-success" type="button" v-on:click="login()" >Login</button>
                 </div>
-                <div v-else id="user-images" class="container" background-color="blue">
-                    <div class="navbar  navbar-dark bg-dark" id="navbar">
-                        <h2>Hello {{input.username}}</h2>
-                        <button class="form-inline btn btn-outline-danger" type='button' v-on:click="logout()">Logout</button>
-                    </div>
-                    <div id="images">
-                        <p>Hey</p>
+            </div>
+            <div v-else id="container-user-data" class="container-fluid" background-color="blue">
+                <div class="navbar  navbar-light bg-light" id="navbar">
+                    <img src="" class="img-circle" alt="Profile Image">
+                    <h2>Hello {{input.username}}</h2>
+                    <button class="form-inline btn btn-outline-primary" type='button' v-on:click="startUpload()" >Upload</button>
+                    <button class="form-inline btn btn-outline-danger" type='button' v-on:click="logout()">Logout</button>
+                </div>
+                <div class="container" id="container-images" v-if="viewImages">
+                    <div v-if="imagesData != null" id="imageGrid">
+                        <div class='row'>
+                        <div v-for="(image, index) in imagesData" class='col-sm-4'>
+                            <a v-on:click="selectImage()">
+                                <img :src="'static/users/' + image.owner.toString() + '/images/' + image.imageId.toString() + '.' + image.fileType" alt="image" class='img-thumbnail' />
+                            </a>
+                        </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+                <div class='container' id='container-imageSelected' v-if="viewImageSelected">
+                </div>
+                <div class='container text-center' id="container-upload" v-if="viewUpload">
+                    <h2>Upload an image</h2>
+                        <div class="input-group mx-auto my-2 ">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text" id="input-imageFile-label">Upload</span>
+                            </div>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" ref='file' id="input-imageFile" v-on:change="handleImage()" aria-describedby="input-imageFile-label">
+                                <label class="custom-file-label" for="input-imageFile">Choose image</label>
+                            </div>
 
+                        </div>
+                        <input class="form-control mx-auto my-2" type="text" id="input-imageDescription" name="description" placeholder="Optional caption" v-model='uploadData.description' />
+                        <button class="col-4 btn btn-outline-success my-2" type="button" v-on:click="uploadImage()">Submit</button>
+                </div>
+                <div class="container" id="container-userProfile" v-if="viewUserProfile">
+                </div>
+            </div>
         </div>
+
         <!--[if lt IE 8]>
             <p class="browserupgrade">
             You are using an <strong>outdated</strong> browser. Please
