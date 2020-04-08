@@ -137,7 +137,7 @@ class SignIn(Resource):
                                         userId = row["userId"]
                                 else:
                                         abort(500)
-                                path = './users/'+ str(userId)
+                                path = './static/users/'+ str(userId)
                                 pathImg = path + '/images'
                                 #Set up folders for user on server
                                 try:
@@ -194,7 +194,7 @@ class User(Resource):
         @authorized
         def delete(self, userId):
 
-                path = './users/'+str(userId)
+                path = './static/users/'+str(userId)
                 #return not found if path to user folder does not exist
                 if not os.path.exists(path):
                        abort(404)
@@ -293,7 +293,7 @@ class Images(Resource):
         @authenticated
         @authorized
         def post(self, userId):
-                UPLOAD_FOLDER = 'users/'+str(userId)+'/images'
+                UPLOAD_FOLDER = 'static/users/'+str(userId)+'/images'
                 description = None
                 imageId=None
 
@@ -397,7 +397,7 @@ class ImageId(Resource):
                 #Grab filetype from DB row
                 filetype = row["filetype"]
                 imagename = str(imageId) +"." + filetype
-                directory = "users/"+str(userId)+"/images"
+                directory = "static/users/"+str(userId)+"/images"
                 try:
                         #Send file to user as attachment
                         return make_response(send_from_directory(directory, filename=imagename, as_attachment=True),200)
@@ -439,7 +439,7 @@ class ImageId(Resource):
                         abort(404)
                 #construct filename and path for file delete
                 filename = str(imageId)+'.'+row['filetype']
-                path = 'users/'+str(userId)+'/images/'+filename
+                path = 'static/users/'+str(userId)+'/images/'+filename
                 try:
                         os.remove(path)
                 except:

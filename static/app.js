@@ -4,7 +4,7 @@ var app = new Vue({
 
     //DATA
     data: {
-        serviceURL: "https://dev.localhost:8001",
+        serviceURL: "https://info3103.cs.unb.ca:8001",
         authenticated: false,
         signedIn: null,
         imagesData: null,
@@ -71,12 +71,32 @@ var app = new Vue({
                     console.log(e);
                 });
         },
+	deleteUser()  {
+            axios
+                .delete(this.serviceURL + '/users/'+this.signedIn.toString())
+                .then(response =>{
+                    this.authenticated = false;
+                    location.reload();
+                })
+                .catch(e => {
+                    console.log(e);
+                });
+        },
 
         startUpload() {
             this.viewImages=false;
             this.viewImageSelected = false;
             this.viewUserProfile = false;
+            this.viewDeleteProfile = false;
             this.viewUpload= true;
+        },
+
+	startDeleteProfile() {
+            this.viewImages=false;
+            this.viewImageSelected = false;
+            this.viewUserProfile = false;
+            this.viewUpload= false;
+            this.viewDeleteProfile = true;
         },
 
         fetchImages(){
