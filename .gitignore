@@ -1,2 +1,10 @@
-DBDesign.txt
-Apache.txt
+flask_session
+key.pem
+cert.pem
+settingsLocal.py
+*.jpg
+*.png
+*.gif
+*.jpeg
+__pycache__
+appLocal.py
