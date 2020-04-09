@@ -4,7 +4,7 @@ var app = new Vue({
 
     //DATA
     data: {
-        serviceURL: "https://info3103.cs.unb.ca:8001",
+        serviceURL: "https://dev.localhost:8001",
         authenticated: false,
         signedIn: null,
         isProfileImage: false,
@@ -96,9 +96,19 @@ var app = new Vue({
                 .then(response => {
                     this.imagesData = response.data.images;
                     this.imagesDataLength = this.imagesData.length;
-                    this.lengthThird = Math.round(this.imagesDataLength/3);
-                    this.lengthTwoThird = Math.round(this.imagesDataLength*2 /3);
-                    //change views
+                    if(this.imagesDataLength >= 3){
+                        this.lengthThird = Math.round(this.imagesDataLength/3);
+                        this.lengthTwoThird = Math.round(this.imagesDataLength*2 /3);
+                    }
+                    else if(this.imagesDataLength ==  2){
+                        this.lengthThird = 1;
+                        this.lengthTwoThird = 2;
+
+                    }
+                    else if (this.imagesDataLength == 1){
+                        this.lengthThird = 1;
+                    }
+                    // change views
                     this.viewImages = true;
                     this.viewImageSelected = false;
                     this.viewUpload = false;

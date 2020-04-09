@@ -55,21 +55,21 @@
                 <div class="container-fluid" id="container-images" v-if="viewImages">
                     <div class="mx-auto"  v-if="imagesData != null" id="imageGrid">
                         <div class="grid-row mx-auto">
-                            <div class='grid-column'>
+                            <div class='grid-column' id="grid-column-1">
                                 <div v-for="(image, index) in imagesData" >
                                     <a v-if="index < lengthThird" v-on:click="selectImage(image)">
                                         <img :src="'static/users/' + image.owner.toString() + '/images/' + image.imageId.toString() + '.' + image.filetype" alt="image" class="grid-img" />
                                     </a>
                                 </div>
                             </div>
-                            <div class='grid-column'>
+                            <div class='grid-column' id="grid-column-2" v-if="imagesDataLength >= 2">
                                 <div v-for="(image, index) in imagesData">
                                     <a v-if="index >= lengthThird && index < lengthTwoThird" v-on:click="selectImage(image)">
                                         <img :src="'static/users/' + image.owner.toString() + '/images/' + image.imageId.toString() + '.' + image.filetype" alt="image" class='grid-img' />
                                     </a>
                                 </div>
                             </div>
-                            <div class='grid-column'>
+                            <div class='grid-column' id="grid-column-3" v-if="imagesDataLength >= 3">
                                 <div v-for="(image, index) in imagesData">
                                     <a v-if="index >= lengthTwoThird && index < imagesDataLength" v-on:click="selectImage(image)">
                                         <img :src="'static/users/' + image.owner.toString() + '/images/' + image.imageId.toString() + '.' + image.filetype" alt="image" class='grid-img' />
@@ -144,9 +144,7 @@
         </div>
         <!-- VUE -->
         <!-- DEV -->
-        <!--script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script-->
-        <!-- PRODUCTION -->
-        <script src="https://cdn/jsdelivr.net/npm/vue"></script>
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 
         <!-- AXIOS -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
