@@ -1,0 +1,44 @@
+- makeCert will be needed to create ssl certificate when extracting project to a new host
+- You can use signinClient for ease of use when signing in
+
+Signin:
+	POST
+		curl -i -H "Content-Type: application/json" -X POST -d '{"username": "Casper", "password": "cr*ap"}' -c cookie-jar -k https://info3103.cs.unb.ca:51496/signin
+    
+	GET	
+		curl -i -H "Content-Type: application/json" -X GET -b cookie-jar -k https://info3103.cs.unb.ca:51496/signin
+
+	DELETE 
+		curl -i -X DELETE -b cookie-jar -k https://info3103.cs.unb.ca:51496/signin
+
+User
+	DELETE
+		curl -i -X DELETE -b cookie-jar -k https://info3103.cs.unb.ca:51496/users/<userId>
+
+
+Images
+	GET
+		(single image)
+		curl -i -H "Content-Type: application/json" -d '{"imageId": 1} -X GET -b cookie-jar -k https://info3103.cs.unb.ca:51496/users/<userId>/images
+        OR
+        (All images)
+        curl -i -X GET -b cookie-jar -k https://info3103.cs.unb.ca:51496/users/<userId>/images
+
+
+	POST
+		curl -i -X POST -H "Content-Type: multipart/form-data" -F "file=@test.jpg" -F "description=image description" -b cookie-jar -k https://info3103.cs.unb.ca:51496/users/<userId>/images
+		(description is optional)
+	
+
+ImageId
+	GET
+		curl -X GET -b cookie-jar -k https://info3103.cs.unb.ca:51496/users/<userId>/images/<imageId> --output download.jpg
+		
+		NOTE: should know the type of file being retrieved so that
+		output can be saved in proper file type.
+		Use Images resource for seeing list of images with file types.
+
+	DELETE
+		curl -i -X DELETE -b cookie-jar -k https://info3103.cs.unb.ca:51496/users/<userId>/images/<imageId>
+
+	

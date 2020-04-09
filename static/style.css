@@ -1,0 +1,148 @@
+/* LOGIN */
+#form-login{
+	max-width: 50%;
+}
+
+/* NAVBAR */
+.nav-custom {
+	background-color: #e9ecef;
+	color: black;
+}
+.nav-button{
+	margin-left: .5rem;
+	margin-right: .5rem;
+}
+.img-cropper-nav {
+	width: 60px;
+	height: 60px;
+	position: relative;
+	overflow: hidden;
+	border-radius: 50%;
+
+}
+#nav-toggle-div {
+	display: none;
+}
+
+.img-profile-nav {
+	display: inline;
+	margin: 0 auto;
+	height: 100%;
+	width: auto;
+}
+
+
+/* PROFILE */
+#profile-button-container {
+	max-width: 60%;
+}
+#profile-image-input{
+	max-width: 60%;
+}
+
+.img-cropper {
+	width: 200px;
+	height: 200px;
+	position: relative;
+	overflow: hidden;
+	border-radius: 50%;
+
+}
+.img-profile {
+	display: inline;
+	margin: 0 auto;
+	height: 100%;
+	width: auto;
+}
+
+
+/* UPLOAD */
+#upload-container-inner {
+	max-width: 70%;
+}
+
+/* IMAGE SELECTED */
+#image-selected {
+	max-height: 80%;
+	max-width: 80%;
+}
+
+/* IMAGE GRID */
+.grid-row {
+	display: flex;
+	flex-wrap: wrap;
+	padding: 0 4px;
+}
+
+.grid-column {
+	flex: 33%;
+	max-width: 33%;
+	padding: 0 4px;
+}
+
+.grid-column .grid-img {
+	margin-top: 8px;
+	vertical-align: middle;
+	width: 100%;
+}
+
+/* RESPONSIVE QUERIES */
+@media screen and (max-width: 800px) {
+	.nav-button {
+	  font-size: .9rem;
+	  line-height: 1.35;
+	  padding: .3rem .6rem;
+	  margin-left: .375rem;
+	  margin-right: .375rem;
+  }
+}
+
+@media screen and (max-width: 700px) {
+	#upload-container-inner {
+	  max-width: 80%;
+  }
+	#nav-button-div {
+	  display: none
+  }
+	#nav-toggle-div {
+	  display: inline
+  }
+	#profile-button-container {
+	  max-width: 80%;
+  }
+	#profile-image-input{
+	  max-width: 80%;
+  }
+
+}
+@media screen and (max-width: 600px) {
+	#upload-container-inner {
+	  max-width: 90%;
+  }
+	.grid-column {
+		flex: 100%;
+		max-width: 100%;
+  }
+	.nav-button {
+	  font-size: .8rem;
+	  line-height: 1.2;
+	  padding: .25rem .50rem;
+	  margin-left: .25rem;
+	  margin-right: .25rem;
+  }
+	.grid-row {
+	  max-width: 100%;
+  }
+}
+
+@media screen and (max-width: 400px) {
+	#upload-container-inner {
+	  max-width: 100%;
+  }
+	#profile-button-container {
+	  max-width: 90%;
+  }
+	#profile-image-input{
+	  max-width: 90%;
+  }
+}
