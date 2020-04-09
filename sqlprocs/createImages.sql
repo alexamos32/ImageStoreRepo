@@ -4,6 +4,6 @@ CREATE TABLE images (
   description  varchar(255)    DEFAULT NULL,
   path       varchar(255)    DEFAULT NULL,
   owner      INT             NOT NULL         REFERENCES users(userId),
-  fileType   VARCHAR(5)      NOT NULL,
+  filetype   VARCHAR(5)      NOT NULL,
   PRIMARY KEY (imageId)
 );

@@ -137,7 +137,7 @@ class SignIn(Resource):
                                         userId = row["userId"]
                                 else:
                                         abort(500)
-                                path = './users/'+ str(userId)
+                                path = './static/users/'+ str(userId)
                                 pathImg = path + '/images'
                                 #Set up folders for user on server
                                 try:
@@ -148,8 +148,13 @@ class SignIn(Resource):
                         else:
                                 #user already exists, save userId for response
                                 userId = row["userId"]
-                response["userId"] = userId
-                response["message"] = 'Got to /users/<userId>/images (GET to view images, POST to upload images)'
+                        if row["profileImage"]:
+                                response["profileImage"] = True
+                                response["profileType"] = row["profileType"]
+                        else:
+                                response["profileImage"] = False
+                        response["userId"] = userId
+                        response["message"] = 'Got to /users/<userId>/images (GET to view images, POST to upload images)'
 
                 return make_response(jsonify(response), responseCode)
 
@@ -157,7 +162,7 @@ class SignIn(Resource):
         #
         # Example curl command:
         # curl -i -H "Content-Type: application/json" -X GET -b cookie-jar
-        # -k https://info3103.cs.unb.ca:51496/signin
+        # -k https://info3103.cs.unb.ca:8001/signin
         def get(self):
                 if 'username' in session:
                         response = {'status': 'success'}
@@ -173,11 +178,11 @@ class SignIn(Resource):
         #
         # Example curl command:
         # curl -i -X DELETE -b cookie-jar
-        # -k https://info3103.cs.unb.ca:51496/signin
+        # -k https://info3103.cs.unb.ca:8001/signin
         @authenticated
         def delete(self):
                 session.clear()
-                response = {'status': 'successfully logged out'}
+                response = {'status': 'success'}
                 responseCode = 204
 
                 return make_response(jsonify(response), responseCode)
@@ -189,12 +194,12 @@ class User(Resource):
         #
         # Example curl command:
         # curl -i -X DELETE -b cookie-jar
-        # -k https://info3103.cs.unb.ca:51496/users/<userId>
+        # -k https://info3103.cs.unb.ca:8001/users/<userId>
         @authenticated
         @authorized
         def delete(self, userId):
 
-                path = './users/'+str(userId)
+                path = './static/users/'+str(userId)
                 #return not found if path to user folder does not exist
                 if not os.path.exists(path):
                        abort(404)
@@ -228,7 +233,67 @@ class User(Resource):
                 return make_response(jsonify( { "status" : "success" } ), 204)
 
 
+class UploadProfile(Resource):
+        #POST: Upload a profile image
+        # Allowed types (jpg, jpeg, gif, png)
+        # Example curl command:
+        # curl -i -X POST -H "Content-Type: multipart/form-data"
+        # -F "file=@test.jpg"  -b cookie-jar
+        # -k https://info3103.cs.unb.ca:8001/users/<userId>/uploadprofile
+        @authenticated
+        @authorized
+        def post(self, userId):
+                UPLOAD_FOLDER = 'static/users/'+str(userId)+'/images'
+                parser = reqparse.RequestParser()
+                #Adding arguments for imagefile and description
+                parser.add_argument('file',type=werkzeug.datastructures.FileStorage, location='files')
+                data = parser.parse_args()
 
+                #Error if no file included
+                if not request.files:
+                        abort(400)#bad request
+
+                #Grab file from arguments
+                photo = data['file']
+                #Split file name to get file type e.g. test.jpg
+                filetype = (photo.filename).split(".")[1].lower()
+                print(filetype)
+                #return error if filetype is not permitted
+                if not allowed_file(photo.filename):
+                        return make_response(jsonify({"error": "only allowed types: jpg, jpeg, png, gif"}),403)
+
+                #If description is in request grab it for db
+                try:
+                        #DB INSERT
+                        dbConnection = pymysql.connect(
+                                settings.DB_HOST,
+                                settings.DB_USER,
+                                settings.DB_PASSWD,
+                                settings.DB_DATABASE,
+                                charset='utf8mb4',
+                                cursorclass= pymysql.cursors.DictCursor)
+                        sql = 'insertProfileImage'
+                        sqlArgs = (userId, filetype)
+                        cursor = dbConnection.cursor()
+                        cursor.callproc(sql,sqlArgs)
+                        row = fetchone()
+                        dbConnection.commit()
+                except:
+                        abort(500)
+                finally:
+                       cursor.close()
+                       dbConnection.close()
+                #Join image ID and Filetype to create filename, then save file
+                filename = 'profile.'+ filetype
+                try:
+                        photo.save(os.path.join(UPLOAD_FOLDER,filename))
+                except:
+                        abort(500)
+                #Create a path to image to return to user
+                path = UPLOAD_FOLDER +'/profile.' + filetype
+                responsecode = 201
+                response = {"status": "success", "path": path }
+                return make_response(jsonify(response),responsecode)
 
 
 class Images(Resource):
@@ -237,12 +302,12 @@ class Images(Resource):
         # Example curl command:
         # curl -i -H "Content-Type: application/json" -d '{"imageId": 1}
         # -X GET -b cookie-jar
-        # -k https://info3103.cs.unb.ca:51496/users/<userId>/images
+        # -k https://info3103.cs.unb.ca:8001/users/<userId>/images
         #
         # OR
         #
         # curl -i -X GET -b cookie-jar
-        # -k https://info3103.cs.unb.ca:51496/users/<userId>/images
+        # -k https://info3103.cs.unb.ca:8001/users/<userId>/images
         @authenticated
         @authorized
         def get(self, userId):
@@ -287,13 +352,13 @@ class Images(Resource):
         # Example curl command:
         # curl -i -X POST -H "Content-Type: multipart/form-data"
         # -F "file=@test.jpg" -F "description=image description" -b cookie-jar
-        # -k https://info3103.cs.unb.ca:51496/users/<userId>/images
+        # -k https://info3103.cs.unb.ca:8001/users/<userId>/images
         #
         #NOTE: description is an optional parameter
         @authenticated
         @authorized
         def post(self, userId):
-                UPLOAD_FOLDER = 'users/'+str(userId)+'/images'
+                UPLOAD_FOLDER = 'static/users/'+str(userId)+'/images'
                 description = None
                 imageId=None
 
@@ -355,57 +420,40 @@ class Images(Resource):
                 response = {"status": "success", "url": path }
                 return make_response(jsonify(response),responsecode)
 
+
 class ImageId(Resource):
-        # GET: Returns an image file back to user
+        # GET: Returns image with specified ID
         #
         # Example curl command:
-        # curl -X GET -b cookie-jar
-        # -k https://info3103.cs.unb.ca:51496/users/<userId>/images/<imageId>
-        # --output download.jpg
-        # NOTE: do not use -i curl tag for this command.
-        # This will cause headers to be saved in image file creating a corrupte file
-        # Also should perform GET on images endpoint first
-        # This will show list of images along with their file types,
-        # this way the output file can be saved with the proper file type
-        # i.e jpg, png ...
+        # curl -i -H "Content-Type: application/json"
+        # -X GET -b cookie-jar
+        # -k https://info3103.cs.unb.ca:8001/users/<userId>/images/<imageId>
         @authenticated
         @authorized
         def get(self, userId, imageId):
                 try:
-                        #Search for image in DB
-                        dbConnection = pymysql.connect(
-                                settings.DB_HOST,
+                        dbConnection = pymysql.connect(settings.DB_HOST,
                                 settings.DB_USER,
                                 settings.DB_PASSWD,
                                 settings.DB_DATABASE,
                                 charset='utf8mb4',
                                 cursorclass= pymysql.cursors.DictCursor)
+                        #Args: owner, imageId
                         sql = 'getImageById'
                         sqlArgs = (userId, imageId)
+
                         cursor = dbConnection.cursor()
-                        cursor.callproc(sql, sqlArgs)
+                        cursor.callproc(sql,sqlArgs)
                         row = cursor.fetchone()
+
                 except:
                         abort(500)
                 finally:
                         cursor.close()
                         dbConnection.close()
-
-                #Abort 404 if no image found
-                if row is None:
-                        abort(404)
-                #Grab filetype from DB row
-                filetype = row["filetype"]
-                imagename = str(imageId) +"." + filetype
-                directory = "users/"+str(userId)+"/images"
-                try:
-                        #Send file to user as attachment
-                        return make_response(send_from_directory(directory, filename=imagename, as_attachment=True),200)
-                except:
-                        #404 if file not found in specified directory
-                        abort(404)
-
-
+                response={'image': row}
+                responsecode=200
+                return make_response(jsonify(response),responsecode)
         # DELETE: Delete an image
         #
         # Example curl command:
@@ -439,7 +487,7 @@ class ImageId(Resource):
                         abort(404)
                 #construct filename and path for file delete
                 filename = str(imageId)+'.'+row['filetype']
-                path = 'users/'+str(userId)+'/images/'+filename
+                path = 'static/users/'+str(userId)+'/images/'+filename
                 try:
                         os.remove(path)
                 except:
@@ -448,12 +496,68 @@ class ImageId(Resource):
                 response = {'status': 'success'}
                 responsecode = 204
                 return make_response(jsonify(response),responsecode)
+
+
+class Download(Resource):
+        # GET: Download an image
+        #
+        # Example curl command:
+        # curl -X GET -b cookie-jar
+        # -k https://info3103.cs.unb.ca:51496/users/<userId>/images/<imageId>
+        # --output download.jpg
+        # NOTE: do not use -i curl tag for this command.
+        # This will cause headers to be saved in image file creating a corrupte file
+        # Also should perform GET on images or imageId endpoint first
+        # This will show list of images along with their file types,
+        # this way the output file can be saved with the proper file type
+        # i.e jpg, png ...
+        @authenticated
+        @authorized
+        def get(self, userId, imageId):
+                print(str(userId) + " " + str(imageId))
+                try:
+                        #Search for image in DB
+                        dbConnection = pymysql.connect(
+                                settings.DB_HOST,
+                                settings.DB_USER,
+                                settings.DB_PASSWD,
+                                settings.DB_DATABASE,
+                                charset='utf8mb4',
+                                cursorclass= pymysql.cursors.DictCursor)
+                        sql = 'getImageById'
+                        sqlArgs = (userId, imageId)
+                        cursor = dbConnection.cursor()
+                        cursor.callproc(sql, sqlArgs)
+                        row = cursor.fetchone()
+                except:
+                        abort(500)
+                finally:
+                        cursor.close()
+                        dbConnection.close()
+
+                #Abort 404 if no image found
+                if row is None:
+                        abort(404)
+                #Grab filetype from DB row
+                filetype = row["filetype"]
+                imagename = str(imageId) +"." + filetype
+                directory = "static/users/"+str(userId)+"/images"
+                try:
+                        #Send file to user as attachment
+                        return make_response(send_from_directory(directory, filename=imagename, as_attachment=True),200)
+                except:
+                        #404 if file not found in specified directory
+                        abort(404)
+
+
 #Create EndPoints            
 api= Api(app)
 api.add_resource(Images, '/users/<int:userId>/images')
 api.add_resource(SignIn, '/signin')
 api.add_resource(ImageId, '/users/<int:userId>/images/<int:imageId>')
+api.add_resource(Download, '/users/<int:userId>/images/<int:imageId>/download')
 api.add_resource(User, '/users/<int:userId>')
+api.add_resource(UploadProfile, '/users/<int:userId>/uploadprofile')
 api.add_resource(Root,'/') 
 if __name__ == "__main__":
         context = ('cert.pem', 'key.pem')
