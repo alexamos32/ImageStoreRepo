@@ -276,7 +276,7 @@ class UploadProfile(Resource):
                         sqlArgs = (userId, filetype)
                         cursor = dbConnection.cursor()
                         cursor.callproc(sql,sqlArgs)
-                        row = fetchone()
+                        row = cursor.fetchone()
                         dbConnection.commit()
                 except:
                         abort(500)
