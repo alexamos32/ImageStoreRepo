@@ -31,8 +31,7 @@
                     <img src="" class="img-circle" alt="Profile Image">
                     <h2>Hello {{input.username}}</h2>
                     <button class="form-inline btn btn-outline-primary" type='button' v-on:click="startUpload()" >Upload</button>
-                    <button class="form-inline btn btn-outline-danger" type='button' v-on:click="startDeleteProfile()">Delete</button>
-                    <button class="form-inline btn btn-outline-danger" type='button' v-on:click="deleteUser()">DeleteTest</button>
+                    <button class="form-inline btn btn-outline-primary" type='button' v-on:click="viewProfile()">Profile</button>
                     <button class="form-inline btn btn-outline-danger" type='button' v-on:click="logout()">Logout</button>
                 </div>
                 <div class="container" id="container-images" v-if="viewImages">
@@ -64,24 +63,18 @@
                         <button class="col-4 btn btn-outline-success my-2" type="button" v-on:click="uploadImage()">Submit</button>
                 </div>
 
-		<div class='container text-center' id="container-delete" v-if="viewDeleteProfile">
-                    <h2>Delete Profile?</h2>
-                        <div class="input-group mx-auto my-2 ">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text" id="input-imageFile-label">Upload</span>
-                            </div>
-                            <div class="custom-file">
-                                <input type="file" class="custom-file-input" ref='file' id="input-imageFile" v-on:change="handleImage()" aria-describedby="input-imageFile-label">
-                                <label class="custom-file-label" for="input-imageFile">Choose image</label>
-                            </div>
-
-                        </div>
-                        <input class="form-control mx-auto my-2" type="text" id="input-imageDescription" name="description" placeholder="Optional caption" v-model='uploadData.description' />
-                        <button class="col-4 btn btn-outline-success my-2" type="button" v-on:click="uploadImage()">Submit</button>
-                </div>
-
                 <div class="container" id="container-userProfile" v-if="viewUserProfile">
+			<h2>{{input.username}}</h2>
+			<button class="col-4 btn btn-outline-success my-2" type="button" v-on:click="">Upload Profile Image</button>
+                        <button class="form-inline btn btn-outline-danger" type='button' v-on:click="viewDeleteUser()">Delete</button>
                 </div>
+		<div class="container" id="container-userProfile" v-if="confirmDelete">
+			<h2>Warning! This will delete your profile! This cannot be undone! Continue?</h2>
+			<button class="form-inline btn btn-outline-primary" type="button" v-on:click=cancelDelete()>Cancel</button>
+                        <button class="form-inline btn btn-outline-danger" type='button' v-on:click="deleteUser()">Delete</button>
+                </div>
+
+
             </div>
         </div>
 

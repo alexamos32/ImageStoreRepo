@@ -13,6 +13,7 @@ var app = new Vue({
         viewImages: false,
         viewImageSelected: false,
         viewUserProfile: false,
+	confirmDelete: false,
         //the image file selected from the upload div
         uploadData: {
             imageFile: '',
@@ -72,7 +73,7 @@ var app = new Vue({
                 });
         },
 	deleteUser()  {
-            axios
+	    axios
                 .delete(this.serviceURL + '/users/'+this.signedIn.toString())
                 .then(response =>{
                     this.authenticated = false;
@@ -87,17 +88,24 @@ var app = new Vue({
             this.viewImages=false;
             this.viewImageSelected = false;
             this.viewUserProfile = false;
-            this.viewDeleteProfile = false;
             this.viewUpload= true;
         },
 
-	startDeleteProfile() {
+	viewProfile() {
             this.viewImages=false;
             this.viewImageSelected = false;
-            this.viewUserProfile = false;
+            this.viewUserProfile = true;
             this.viewUpload= false;
-            this.viewDeleteProfile = true;
+
         },
+
+	viewDeleteUser(){
+	    this.confirmDelete=true;
+	},
+
+	cancelDelete(){
+	    this.confirmDelete=false;
+	},
 
         fetchImages(){
            axios
